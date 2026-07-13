@@ -6,7 +6,7 @@ Future versions of the script will be included in BIG-IP releases and will not r
 
 ### Current version:
 
-1.0.10
+1.0.11
 
 ### Version support
 This utility works on BIG-IP 15.1 and above, SSL Orchestrator 7.x and above.
@@ -23,3 +23,7 @@ This utility works on BIG-IP 15.1 and above, SSL Orchestrator 7.x and above.
 ### Usage Instructions
 
 Full instructions are available in the [SSLO Troubleshooting Guide](https://clouddocs.f5.com/sslo-troubleshooting-guide/main/sslofix.html).
+
+### Updates
+
+20260604: Updated auth to support history expansion --> export BIGUSER='admin:password'
