@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
-##
-# BIG-IP SSLo diagnostics and repair utility
+### BIG-IP SSL Orchestrator diagnostics and repair utility
 
 # Version of current file.
-VERSION="1.0.10"
+VERSION="1.0.11"
+
+# Updates
+## 20260604: Updated auth to support history expansion --> export BIGUSER='admin:password'
+
 
 # Colors for messaging prompts.
 COLOR_ERR='\033[0;31m'
@@ -1456,12 +1459,25 @@ function verify_blocks() {
         fi
     fi
 
+    # if [[ ! -z ${username} && ! -z ${password} ]]; then
+    #     msg="Saving current block state on ${suffix}..."
+    #     log_info "${msg}"
+
+    #     cmd="restcurl -u ${username}:${password} ${SSLO_IAPP_REF}/f5-iappslx-ssl-orchestrator/mcpBlockIO -X POST -d '{\"operation\": \"save\"}'"
+    #     login_response=$(run_cmd $1 "${cmd}" | jq .command)
+    #     if [[ ${login_response} == "null" ]]; then
+    #         log_warning "Failed to save current block state on ${suffix}..."
+    #     fi
+    # fi
     if [[ ! -z ${username} && ! -z ${password} ]]; then
         msg="Saving current block state on ${suffix}..."
         log_info "${msg}"
-
-        cmd="restcurl -u ${username}:${password} ${SSLO_IAPP_REF}/f5-iappslx-ssl-orchestrator/mcpBlockIO -X POST -d '{\"operation\": \"save\"}'"
-        login_response=$(run_cmd $1 "${cmd}" | jq .command)
+        sleep 15
+        if [[ "$1" == "-r" ]]; then
+            login_response=$(${REMOTE_SSH_CMD} "curl -sk -u '${BIGUSER}' -H 'Content-Type: application/json' -X POST -d '{\"operation\": \"save\"}' https://localhost/mgmt/shared/iapp/f5-iappslx-ssl-orchestrator/mcpBlockIO" | jq .command)
+        else
+            login_response=$(curl -sk -u "${BIGUSER}" -H "Content-Type: application/json" -X POST -d '{"operation": "save"}' "https://localhost/mgmt/shared/iapp/f5-iappslx-ssl-orchestrator/mcpBlockIO" | jq .command)
+        fi
         if [[ ${login_response} == "null" ]]; then
             log_warning "Failed to save current block state on ${suffix}..."
         fi
@@ -1547,12 +1563,22 @@ function validate_input() {
 
 function request_credentials() {
     while true; do
-        echo "Please enter your BIG-IP Admin account credentials."
-        IFS= read -p 'Enter Username: ' username
-        IFS= read -s -p 'Enter Password: ' password
-        echo ""
+        # echo "Please enter your BIG-IP Admin account credentials."
+        # IFS= read -p 'Enter Username: ' username
+        # IFS= read -s -p 'Enter Password: ' password
+        # echo ""
+        if [[ -z "${BIGUSER:-}" ]]; then
+            echo
+            echo "The user:pass must be set in an environment variable. Exiting."
+            echo " export BIGUSER='admin:password'"
+            echo
+            exit 1
+        fi
+        username="${BIGUSER%%:*}"
+        password="${BIGUSER#*:}"
 
-        cmd="restcurl -u ${username}:${password} ${SSLO_IAPP_REF}/blocks"
+        # cmd="restcurl -u ${username}:${password} ${SSLO_IAPP_REF}/blocks"
+        cmd="restcurl -u "${BIGUSER}" ${SSLO_IAPP_REF}/blocks"
         login_response=$(run_cmd -o "${cmd}" | jq .selfLink)
         if [[ ${login_response} == '"https://localhost/mgmt/shared/iapp/blocks"' ]]; then
             return
